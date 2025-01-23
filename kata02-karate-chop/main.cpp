@@ -45,6 +45,8 @@ int main(int argc, char *argv[]) {
         run_tests(&monday);
     } else if (option == "tuesday") {
         run_tests(&tuesday);
+    } else if (option == "wednesday") {
+        run_tests(&wednesday);
     } else {
         std::cerr << "Invalid option" << std::endl;
         return 1;

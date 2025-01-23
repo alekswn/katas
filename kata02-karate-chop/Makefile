@@ -5,7 +5,7 @@ CXX = clang++
 CXXFLAGS = -Wall -Wextra -std=c++2a
 
 # Source files
-SRCS = main.cpp monday.cpp tuesday.cpp
+SRCS = main.cpp monday.cpp tuesday.cpp wednesday.cpp
 
 # Object files directory
 BUILD_DIR = build
@@ -44,6 +44,8 @@ run: $(TARGET)
 	./$(TARGET) monday
 	@echo "Running: ./$(TARGET) tuesday"
 	./$(TARGET) tuesday
+	@echo "Running: ./$(TARGET) wednesday"
+	./$(TARGET) wednesday
 
 # Clean up build files
 clean:
