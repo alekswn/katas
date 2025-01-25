@@ -5,7 +5,7 @@ CXX = clang++
 CXXFLAGS = -Wall -Wextra -std=c++2a
 
 # Source files
-SRCS = main.cpp monday.cpp tuesday.cpp wednesday.cpp thursday.cpp
+SRCS = main.cpp monday.cpp tuesday.cpp wednesday.cpp thursday.cpp friday.cpp benchmark.cpp
 
 # Object files directory
 BUILD_DIR = build
@@ -18,13 +18,17 @@ OBJS = $(SRCS:%.cpp=$(BUILD_DIR)/%.o)
 
 # Executable name
 TARGET = $(BIN_DIR)/karate_chop
+BENCHMARK_TARGET = $(BIN_DIR)/benchmark
 
 # Default target
-all: $(TARGET)
+all: $(TARGET) $(BENCHMARK_TARGET)
 
 # Link object files to create the executable
 $(TARGET): $(OBJS) | $(BIN_DIR)
-	$(CXX) $(CXXFLAGS) -o $@ $^
+	$(CXX) $(CXXFLAGS) -o $@ $(filter-out $(BUILD_DIR)/benchmark.o, $(OBJS))
+
+$(BENCHMARK_TARGET): $(OBJS) | $(BIN_DIR)
+	$(CXX) $(CXXFLAGS) -o $@ $(filter-out $(BUILD_DIR)/main.o, $(OBJS))
 
 # Compile source files into object files
 $(BUILD_DIR)/%.o: %.cpp | $(BUILD_DIR)
@@ -48,6 +52,13 @@ run: $(TARGET)
 	./$(TARGET) wednesday
 	@echo "Running: ./$(TARGET) thursday"
 	./$(TARGET) thursday
+	@echo "Running: ./$(TARGET) friday"
+	./$(TARGET) friday
+
+# Run the benchmark
+benchmark: $(BENCHMARK_TARGET)
+	@echo "Running benchmark"
+	./$(BENCHMARK_TARGET)
 
 # Clean up build files
 clean:
