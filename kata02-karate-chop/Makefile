@@ -2,7 +2,7 @@
 CXX = clang++
 
 # Compiler flags
-CXXFLAGS = -Wall -Wextra -std=c++2a
+CXXFLAGS = -Wall -Wextra -std=c++2a -O3
 
 # Source files
 SRCS = main.cpp monday.cpp tuesday.cpp wednesday.cpp thursday.cpp friday.cpp benchmark.cpp
