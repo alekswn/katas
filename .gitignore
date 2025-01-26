@@ -1,3 +1,9 @@
 bin
 build
 .vscode
+
+# CMake artifacts
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
