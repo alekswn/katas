@@ -229,14 +229,8 @@ size_t generate_allocation_size(void) {
 void benchmark_sequential_alloc_free(void) {
     printf("Benchmark: Sequential allocation and free\n");
     
-    void** ptrs = malloc(num_allocations * sizeof(void*));
-    size_t* sizes = malloc(num_allocations * sizeof(size_t)); // Track actual sizes
-    if (!ptrs || !sizes) {
-        printf("Failed to allocate arrays\n");
-        free(ptrs);
-        free(sizes);
-        return;
-    }
+    void* ptrs[num_allocations];
+    size_t sizes[num_allocations];
     
     // Initialize histograms
     init_size_histogram(&histograms[0]); // malloc
@@ -269,20 +263,13 @@ void benchmark_sequential_alloc_free(void) {
             add_latency_to_size_bucket(&histograms[3], sizes[i], end_time - start_time);
         }
     }
-    
-    free(ptrs);
-    free(sizes);
 }
 
 // Benchmark: Calloc operations with size-based histogram
 void benchmark_calloc(void) {
     printf("Benchmark: Calloc operations\n");
     
-    void** ptrs = malloc(num_allocations * sizeof(void*));
-    if (!ptrs) {
-        printf("Failed to allocate pointer array\n");
-        return;
-    }
+    void* ptrs[num_allocations];
     
     // Initialize histogram
     init_size_histogram(&histograms[1]); // calloc
@@ -308,8 +295,6 @@ void benchmark_calloc(void) {
     for (int i = 0; i < num_allocations; i++) {
         free(ptrs[i]);
     }
-    
-    free(ptrs);
 }
 
 // Benchmark: Realloc operations with size-based histogram
