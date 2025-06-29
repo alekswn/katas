@@ -12,6 +12,7 @@
 #define DEFAULT_MAX_ALLOC_SIZE (4ULL * 1024ULL * 1024ULL * 1024ULL)  // 4GB
 #define MIN_ALLOC_SIZE (8)
 #define NUM_SIZE_BINS (5)
+#define PERCENTILE_SAMPLE_SIZE (1000) // Fixed size for percentile samples
 
 // Fixed bucket boundaries
 #define BUCKET_4K    (4ULL * 1024ULL)
@@ -33,6 +34,8 @@ typedef struct {
     int total_operations;
     size_t size_range_start;
     size_t size_range_end;
+    long long percentile_samples[PERCENTILE_SAMPLE_SIZE]; // Fixed-size array for sampling
+    int sample_count; // Number of samples collected
 } size_bucket_t;
 
 // Size-based histogram for each function
@@ -55,6 +58,13 @@ long long get_time_us(void) {
     return get_time_ns() / 1000LL;
 }
 
+// Clean up histogram memory
+void cleanup_histogram(size_histogram_t* hist) {
+    for (int i = 0; i < NUM_SIZE_BINS; i++) {
+        hist->buckets[i].sample_count = 0;
+    }
+}
+
 // Initialize size-based histogram with fixed buckets
 void init_size_histogram(size_histogram_t* hist) {
     // Define fixed bucket boundaries
@@ -67,6 +77,7 @@ void init_size_histogram(size_histogram_t* hist) {
         hist->buckets[i].total_operations = 0;
         hist->buckets[i].size_range_start = boundaries[i];
         hist->buckets[i].size_range_end = boundaries[i + 1];
+        hist->buckets[i].sample_count = 0;
     }
 }
 
@@ -89,13 +100,56 @@ void add_latency_to_size_bucket(size_histogram_t* hist, size_t size, long long l
     
     b->total_latency += latency_ns;
     b->total_operations++;
+    
+    // Reservoir sampling for percentile calculation
+    if (b->sample_count < PERCENTILE_SAMPLE_SIZE) {
+        // Fill the sample array initially
+        b->percentile_samples[b->sample_count] = latency_ns;
+        b->sample_count++;
+    } else {
+        // Reservoir sampling: replace with probability PERCENTILE_SAMPLE_SIZE/total_operations
+        int j = rand() % b->total_operations;
+        if (j < PERCENTILE_SAMPLE_SIZE) {
+            b->percentile_samples[j] = latency_ns;
+        }
+    }
+}
+
+// Compare function for qsort
+int compare_latencies(const void* a, const void* b) {
+    return (*(long long*)a - *(long long*)b);
+}
+
+// Calculate percentile from sample array
+long long calculate_percentile(const long long* samples, int count, double percentile) {
+    if (count == 0) return 0;
+    
+    // Create a temporary array for sorting (since we don't want to modify the original)
+    long long temp_samples[PERCENTILE_SAMPLE_SIZE];
+    memcpy(temp_samples, samples, count * sizeof(long long));
+    
+    // Sort the temporary array
+    qsort(temp_samples, count, sizeof(long long), compare_latencies);
+    
+    // Calculate index for percentile
+    double index = (percentile / 100.0) * (count - 1);
+    int lower_index = (int)index;
+    int upper_index = lower_index + 1;
+    
+    if (upper_index >= count) {
+        return temp_samples[count - 1];
+    }
+    
+    // Linear interpolation
+    double fraction = index - lower_index;
+    return (long long)(temp_samples[lower_index] * (1 - fraction) + temp_samples[upper_index] * fraction);
 }
 
 // Print size-based histogram
 void print_size_histogram(const char* function_name, const size_histogram_t* hist) {
     printf("\n%s - Latency by Allocation Size:\n", function_name);
-    printf("Size Range        | Operations |  Min (ns)  |  Max (ns)  |  Avg (ns)  | Distribution\n");
-    printf("------------------|------------|------------|------------|------------|-------------\n");
+    printf("Size Range        | Operations |  Min (ns)  |  Max (ns)  |  Avg (ns)  |  P50 (ns)  |  P90 (ns)  |  P99 (ns)  | Distribution\n");
+    printf("------------------|------------|------------|------------|------------|------------|------------|------------|-------------\n");
     
     const char* bucket_names[] = {"4K", "2MB", "100MB", "1GB", ">1GB"};
     
@@ -105,9 +159,15 @@ void print_size_histogram(const char* function_name, const size_histogram_t* his
         
         double avg_latency = (double)bucket->total_latency / bucket->total_operations;
         
-        printf("%-17s | %10d | %10lld | %10lld | %10.0f | ", 
+        // Calculate percentiles
+        long long p50 = calculate_percentile(bucket->percentile_samples, bucket->sample_count, 50.0);
+        long long p90 = calculate_percentile(bucket->percentile_samples, bucket->sample_count, 90.0);
+        long long p99 = calculate_percentile(bucket->percentile_samples, bucket->sample_count, 99.0);
+        
+        printf("%-17s | %10d | %10lld | %10lld | %10.0f | %10lld | %10lld | %10lld | ", 
                bucket_names[i],
-               bucket->total_operations, bucket->min_latency, bucket->max_latency, avg_latency);
+               bucket->total_operations, bucket->min_latency, bucket->max_latency, avg_latency,
+               p50, p90, p99);
         
         // Print simple bar chart
         int bar_length = (bucket->total_operations * 20) / num_allocations;
@@ -407,6 +467,11 @@ int main(int argc, char* argv[]) {
     
     // Print histograms
     print_all_size_histograms();
+    
+    // Clean up histogram memory
+    for (int i = 0; i < 4; i++) {
+        cleanup_histogram(&histograms[i]);
+    }
     
     printf("\n=== Benchmark Complete ===\n");
     
