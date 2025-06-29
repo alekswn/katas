@@ -43,7 +43,9 @@ make
 
 # Then run tests with naive malloc
 cd ../tests
-make test-naive
+make
+
+LD_PRELOAD=../naive-malloc/libnaive-malloc.so ./test-malloc 
 ```
 
 ## Test Output
