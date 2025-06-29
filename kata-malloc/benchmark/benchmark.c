@@ -8,7 +8,7 @@
 #include <math.h>
 
 // Default values
-#define DEFAULT_NUM_ALLOCATIONS (100)
+#define DEFAULT_NUM_ALLOCATIONS (100000)
 #define DEFAULT_MAX_ALLOC_SIZE (4ULL * 1024ULL * 1024ULL * 1024ULL)  // 4GB
 #define MIN_ALLOC_SIZE (8)
 #define NUM_SIZE_BINS (5)
@@ -23,8 +23,8 @@
 // Global configuration
 static int num_allocations = DEFAULT_NUM_ALLOCATIONS;
 static size_t max_alloc_size = DEFAULT_MAX_ALLOC_SIZE;
-static int distribution_type = 1; // 0=uniform, 1=weighted, 2=exponential
-static int disable_memset = 0; // 0=enabled, 1=disabled
+static int distribution_type = 2; // 0=uniform, 1=weighted, 2=exponential
+static int disable_memset = 1; // 0=enabled, 1=disabled
 
 // Histogram structure based on size
 typedef struct {
@@ -395,19 +395,19 @@ void print_usage(const char* program_name) {
     printf("  -n NUM    Number of allocations per test (default: %d)\n", DEFAULT_NUM_ALLOCATIONS);
     printf("  -s SIZE   Maximum allocation size (default: %llu bytes)\n", DEFAULT_MAX_ALLOC_SIZE);
     printf("            Size can be specified as: 1024, 1K, 2M, 1G, etc.\n");
-    printf("  -d TYPE   Distribution type (default: 0)\n");
+    printf("  -d TYPE   Distribution type (default: 2)\n");
     printf("            0 = uniform distribution\n");
     printf("            1 = weighted distribution (73%% small, 20%% medium, 5%% large, 2%% huge)\n");
     printf("            2 = exponential distribution (favors smaller sizes)\n");
-    printf("  -m        Disable memset calls (default: enabled)\n");
+    printf("  -m        Enable memset calls (default: disabled)\n");
     printf("  -h        Show this help message\n");
     printf("\nExamples:\n");
     printf("  %s                    # Use defaults\n", program_name);
-    printf("  %s -n 100             # 100 allocations per test\n", program_name);
+    printf("  %s -n 1000            # 1000 allocations per test\n", program_name);
     printf("  %s -s 1M              # Max size 1MB\n", program_name);
     printf("  %s -d 1               # Use weighted distribution\n", program_name);
-    printf("  %s -m                 # Disable memset calls\n", program_name);
-    printf("  %s -n 50 -s 100M -d 2 -m # 50 allocations, max 100MB, exponential dist, no memset\n", program_name);
+    printf("  %s -m                 # Enable memset calls\n", program_name);
+    printf("  %s -n 50000 -s 100M -d 0 -m # 50K allocations, max 100MB, uniform dist, with memset\n", program_name);
 }
 
 int main(int argc, char* argv[]) {
