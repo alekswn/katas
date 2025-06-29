@@ -23,6 +23,7 @@
 static int num_allocations = DEFAULT_NUM_ALLOCATIONS;
 static size_t max_alloc_size = DEFAULT_MAX_ALLOC_SIZE;
 static int distribution_type = 1; // 0=uniform, 1=weighted, 2=exponential
+static int disable_memset = 0; // 0=enabled, 1=disabled
 
 // Histogram structure based on size
 typedef struct {
@@ -191,7 +192,9 @@ void benchmark_sequential_alloc_free(void) {
         long long end_time = get_time_ns();
         
         if (ptrs[i]) {
-            memset(ptrs[i], i % 256, size);
+            if (!disable_memset) {
+                memset(ptrs[i], i % 256, size);
+            }
             add_latency_to_size_bucket(&histograms[0], size, end_time - start_time);
         }
     }
@@ -271,7 +274,9 @@ void benchmark_realloc(void) {
             
             if (new_ptr) {
                 ptr = new_ptr;
-                memset(ptr, i % 256, new_size);
+                if (!disable_memset) {
+                    memset(ptr, i % 256, new_size);
+                }
                 add_latency_to_size_bucket(&histograms[2], new_size, realloc_end - realloc_start);
             }
         }
@@ -334,20 +339,22 @@ void print_usage(const char* program_name) {
     printf("            0 = uniform distribution\n");
     printf("            1 = weighted distribution (73%% small, 20%% medium, 5%% large, 2%% huge)\n");
     printf("            2 = exponential distribution (favors smaller sizes)\n");
+    printf("  -m        Disable memset calls (default: enabled)\n");
     printf("  -h        Show this help message\n");
     printf("\nExamples:\n");
     printf("  %s                    # Use defaults\n", program_name);
     printf("  %s -n 100             # 100 allocations per test\n", program_name);
     printf("  %s -s 1M              # Max size 1MB\n", program_name);
     printf("  %s -d 1               # Use weighted distribution\n", program_name);
-    printf("  %s -n 50 -s 100M -d 2 # 50 allocations, max 100MB, exponential dist\n", program_name);
+    printf("  %s -m                 # Disable memset calls\n", program_name);
+    printf("  %s -n 50 -s 100M -d 2 -m # 50 allocations, max 100MB, exponential dist, no memset\n", program_name);
 }
 
 int main(int argc, char* argv[]) {
     int opt;
     
     // Parse command line arguments
-    while ((opt = getopt(argc, argv, "n:s:d:h")) != -1) {
+    while ((opt = getopt(argc, argv, "n:s:d:mh")) != -1) {
         switch (opt) {
             case 'n':
                 num_allocations = atoi(optarg);
@@ -370,6 +377,9 @@ int main(int argc, char* argv[]) {
                     exit(1);
                 }
                 break;
+            case 'm':
+                disable_memset = 1;
+                break;
             case 'h':
                 print_usage(argv[0]);
                 exit(0);
@@ -384,7 +394,8 @@ int main(int argc, char* argv[]) {
     printf("Allocation size range: %d - %zu bytes\n", MIN_ALLOC_SIZE, max_alloc_size);
     
     const char* dist_names[] = {"uniform", "weighted", "exponential"};
-    printf("Distribution type: %s\n\n", dist_names[distribution_type]);
+    printf("Distribution type: %s\n", dist_names[distribution_type]);
+    printf("Memset calls: %s\n\n", disable_memset ? "disabled" : "enabled");
     
     // Seed random number generator
     srand(time(NULL));
